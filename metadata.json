@@ -1,0 +1,6 @@
+{
+  "name": "NUSMADE – School Management Platform",
+  "description": "Transform the way your school works with NUSMADE. Modern School Management System (SMS), Learning Management System (LMS), and school website development for schools and Madrasahs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

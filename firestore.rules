@@ -1,0 +1,556 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny all paths unless explicitly permitted below.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Helpers
+    // =========================================================================
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string;
+    }
+
+    // Bootstrapped NUSMADE / School owner email (checked with email_verified == true)
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() &&
+        request.auth.token.email.lower() == 'oyedele.nusroh@gmail.com';
+    }
+
+    // Admin check for single-document operations (short-circuits before exists())
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+        (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidLeadStatus(status) {
+      return status is string && status in ['new', 'contacted', 'scheduled', 'archived'];
+    }
+
+    // =========================================================================
+    // Lead & Admin Validation Blueprints
+    // =========================================================================
+
+    function isValidDemoRequest(data) {
+      return data.keys().hasAll([
+          'referenceId',
+          'schoolName',
+          'fullName',
+          'email',
+          'phone',
+          'schoolType',
+          'numberOfStudents',
+          'preferredDate',
+          'selectedPlan',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'referenceId',
+          'schoolName',
+          'fullName',
+          'email',
+          'phone',
+          'schoolType',
+          'numberOfStudents',
+          'preferredDate',
+          'selectedPlan',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.referenceId is string && data.referenceId.size() >= 6 && data.referenceId.size() <= 32 && data.referenceId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.schoolName is string && data.schoolName.size() >= 1 && data.schoolName.size() <= 160 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+        data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 30 &&
+        data.schoolType is string && data.schoolType.size() >= 1 && data.schoolType.size() <= 80 &&
+        data.numberOfStudents is string && data.numberOfStudents.size() >= 1 && data.numberOfStudents.size() <= 80 &&
+        data.preferredDate is string && data.preferredDate.size() >= 8 && data.preferredDate.size() <= 20 && data.preferredDate.matches('^[0-9\\-]+$') &&
+        data.selectedPlan is string && data.selectedPlan.size() >= 1 && data.selectedPlan.size() <= 80 &&
+        data.message is string && data.message.size() <= 2000 &&
+        isValidLeadStatus(data.status) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidContactInquiry(data) {
+      return data.keys().hasAll([
+          'referenceId',
+          'name',
+          'schoolName',
+          'email',
+          'phone',
+          'subject',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'referenceId',
+          'name',
+          'schoolName',
+          'email',
+          'phone',
+          'subject',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.referenceId is string && data.referenceId.size() >= 6 && data.referenceId.size() <= 32 && data.referenceId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.schoolName is string && data.schoolName.size() >= 1 && data.schoolName.size() <= 160 &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+        data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 30 &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 160 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 2000 &&
+        isValidLeadStatus(data.status) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'role', 'createdAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+        data.role is string && data.role == 'admin' &&
+        data.createdAt is timestamp;
+    }
+
+    // =========================================================================
+    // School Management System Validation Blueprints
+    // =========================================================================
+
+    function isValidSchoolSettings(data) {
+      return data.keys().hasAll([
+          'schoolId',
+          'schoolName',
+          'schoolType',
+          'termLabel',
+          'classes',
+          'subjects',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'schoolId',
+          'schoolName',
+          'schoolType',
+          'madrasahGradingMode',
+          'termLabel',
+          'classes',
+          'subjects',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.schoolId is string && data.schoolId.size() >= 1 && data.schoolId.size() <= 64 && data.schoolId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.schoolName is string && data.schoolName.size() >= 1 && data.schoolName.size() <= 160 &&
+        data.schoolType is string && data.schoolType in ['conventional', 'madrasah'] &&
+        (!('madrasahGradingMode' in data) || (data.madrasahGradingMode is string && data.madrasahGradingMode in ['arabic', 'english', 'both'])) &&
+        data.termLabel is string && data.termLabel.size() >= 1 && data.termLabel.size() <= 80 &&
+        data.classes is list && data.classes.size() >= 1 && data.classes.size() <= 30 && data.classes[0] is string &&
+        data.subjects is list && data.subjects.size() >= 1 && data.subjects.size() <= 25 && data.subjects[0] is string &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSchoolTeacher(data) {
+      return data.keys().hasAll([
+          'teacherId',
+          'fullName',
+          'email',
+          'assignedClass',
+          'assignedSubject',
+          'status',
+          'schoolName',
+          'schoolType',
+          'termLabel',
+          'subjects',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'teacherId',
+          'fullName',
+          'email',
+          'assignedClass',
+          'assignedSubject',
+          'status',
+          'schoolName',
+          'schoolType',
+          'madrasahGradingMode',
+          'termLabel',
+          'subjects',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.teacherId is string && data.teacherId.size() >= 3 && data.teacherId.size() <= 64 && data.teacherId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+        data.assignedClass is string && data.assignedClass.size() >= 1 && data.assignedClass.size() <= 80 &&
+        data.assignedSubject is string && data.assignedSubject.size() >= 1 && data.assignedSubject.size() <= 80 &&
+        data.status is string && data.status in ['active', 'inactive'] &&
+        data.schoolName is string && data.schoolName.size() >= 1 && data.schoolName.size() <= 160 &&
+        data.schoolType is string && data.schoolType in ['conventional', 'madrasah'] &&
+        (!('madrasahGradingMode' in data) || (data.madrasahGradingMode is string && data.madrasahGradingMode in ['arabic', 'english', 'both'])) &&
+        data.termLabel is string && data.termLabel.size() >= 1 && data.termLabel.size() <= 80 &&
+        data.subjects is list && data.subjects.size() >= 1 && data.subjects.size() <= 25 && data.subjects[0] is string &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSchoolStudent(data) {
+      return data.keys().hasAll([
+          'studentId',
+          'admissionNo',
+          'fullName',
+          'className',
+          'gender',
+          'classTeacherEmail',
+          'attendanceDate',
+          'attendanceToday',
+          'marks',
+          'teacherRemark',
+          'tahfizProgress',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'studentId',
+          'admissionNo',
+          'fullName',
+          'className',
+          'gender',
+          'classTeacherEmail',
+          'attendanceDate',
+          'attendanceToday',
+          'attendanceHistory',
+          'marks',
+          'teacherRemark',
+          'tahfizProgress',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.studentId is string && data.studentId.size() >= 3 && data.studentId.size() <= 64 && data.studentId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.admissionNo is string && data.admissionNo.size() >= 2 && data.admissionNo.size() <= 40 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.className is string && data.className.size() >= 1 && data.className.size() <= 80 &&
+        data.gender is string && data.gender in ['Male', 'Female'] &&
+        data.classTeacherEmail is string && data.classTeacherEmail.size() <= 160 &&
+        data.attendanceDate is string && data.attendanceDate.size() >= 8 && data.attendanceDate.size() <= 20 && data.attendanceDate.matches('^[0-9\\-]+$') &&
+        data.attendanceToday is string && data.attendanceToday in ['present', 'late', 'absent'] &&
+        (!('attendanceHistory' in data) || (data.attendanceHistory is map && data.attendanceHistory.size() <= 120)) &&
+        data.marks is list && data.marks.size() >= 1 && data.marks.size() <= 20 && data.marks[0] is map &&
+        data.teacherRemark is string && data.teacherRemark.size() <= 500 &&
+        data.tahfizProgress is string && data.tahfizProgress.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStudentFeeRecord(data) {
+      return data.keys().hasAll([
+          'studentId',
+          'fullName',
+          'className',
+          'guardianName',
+          'guardianPhone',
+          'termFeeNgn',
+          'amountPaidNgn',
+          'payments',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'studentId',
+          'fullName',
+          'className',
+          'guardianName',
+          'guardianPhone',
+          'termFeeNgn',
+          'amountPaidNgn',
+          'payments',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.studentId is string && data.studentId.size() >= 3 && data.studentId.size() <= 64 && data.studentId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.className is string && data.className.size() >= 1 && data.className.size() <= 80 &&
+        data.guardianName is string && data.guardianName.size() >= 1 && data.guardianName.size() <= 120 &&
+        data.guardianPhone is string && data.guardianPhone.size() >= 7 && data.guardianPhone.size() <= 30 &&
+        data.termFeeNgn is number && data.termFeeNgn >= 0 &&
+        data.amountPaidNgn is number && data.amountPaidNgn >= 0 &&
+        data.payments is list && data.payments.size() <= 50 && (data.payments.size() == 0 || data.payments[0] is map) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules: Marketing Leads & Admins
+    // =========================================================================
+
+    match /demo_requests/{requestId} {
+      allow get: if isAdmin() && isValidId(requestId);
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(requestId) &&
+        isValidDemoRequest(incoming()) &&
+        incoming().referenceId == requestId &&
+        incoming().status == 'new' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidDemoRequest(incoming()) &&
+        isAdmin() &&
+        isValidId(requestId) &&
+        incoming().referenceId == existing().referenceId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+
+      allow delete: if isAdmin() && isValidId(requestId);
+    }
+
+    match /contact_inquiries/{inquiryId} {
+      allow get: if isAdmin() && isValidId(inquiryId);
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(inquiryId) &&
+        isValidContactInquiry(incoming()) &&
+        incoming().referenceId == inquiryId &&
+        incoming().status == 'new' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidContactInquiry(incoming()) &&
+        isAdmin() &&
+        isValidId(inquiryId) &&
+        incoming().referenceId == existing().referenceId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+
+      allow delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    match /admins/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (isBootstrappedAdmin() || request.auth.uid == userId);
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isBootstrappedAdmin() &&
+        isValidId(userId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().uid == userId &&
+        incoming().createdAt == request.time;
+
+      allow update: if false;
+      allow delete: if isBootstrappedAdmin() && isValidId(userId) && userId != request.auth.uid;
+    }
+
+    // =========================================================================
+    // Collection Rules: Real School System (Admin vs. Class Teacher RBAC)
+    // =========================================================================
+
+    match /school_settings/{schoolId} {
+      allow get: if isAdmin() && isValidId(schoolId);
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isAdmin() &&
+        isValidId(schoolId) &&
+        isValidSchoolSettings(incoming()) &&
+        incoming().schoolId == schoolId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidSchoolSettings(incoming()) &&
+        isAdmin() &&
+        isValidId(schoolId) &&
+        incoming().schoolId == existing().schoolId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().diff(existing()).affectedKeys().hasOnly([
+            'schoolName',
+            'schoolType',
+            'madrasahGradingMode',
+            'termLabel',
+            'classes',
+            'subjects',
+            'updatedAt'
+          ]))
+        );
+
+      allow delete: if false;
+    }
+
+    match /school_teachers/{teacherId} {
+      allow get: if isValidId(teacherId) &&
+        (isAdmin() || (isVerifiedUser() && existing().email == request.auth.token.email.lower()));
+      allow list: if isBootstrappedAdmin() ||
+        (isVerifiedUser() && resource.data.email == request.auth.token.email.lower());
+
+      allow create: if isAdmin() &&
+        isValidId(teacherId) &&
+        isValidSchoolTeacher(incoming()) &&
+        incoming().teacherId == teacherId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidSchoolTeacher(incoming()) &&
+        isAdmin() &&
+        isValidId(teacherId) &&
+        incoming().teacherId == existing().teacherId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName',
+            'email',
+            'assignedClass',
+            'assignedSubject',
+            'status',
+            'schoolName',
+            'schoolType',
+            'madrasahGradingMode',
+            'termLabel',
+            'subjects',
+            'updatedAt'
+          ]))
+        );
+
+      allow delete: if isAdmin() && isValidId(teacherId);
+    }
+
+    match /school_students/{studentId} {
+      allow get: if isValidId(studentId) &&
+        (
+          isAdmin() ||
+          (
+            isVerifiedUser() &&
+            existing().classTeacherEmail.size() > 0 &&
+            existing().classTeacherEmail == request.auth.token.email.lower()
+          )
+        );
+
+      allow list: if isBootstrappedAdmin() ||
+        (
+          isVerifiedUser() &&
+          resource.data.classTeacherEmail.size() > 0 &&
+          resource.data.classTeacherEmail == request.auth.token.email.lower()
+        );
+
+      allow create: if isAdmin() &&
+        isValidId(studentId) &&
+        isValidSchoolStudent(incoming()) &&
+        incoming().studentId == studentId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidSchoolStudent(incoming()) &&
+        isValidId(studentId) &&
+        incoming().studentId == existing().studentId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'admissionNo',
+              'fullName',
+              'className',
+              'gender',
+              'classTeacherEmail',
+              'attendanceDate',
+              'attendanceToday',
+              'attendanceHistory',
+              'marks',
+              'teacherRemark',
+              'tahfizProgress',
+              'updatedAt'
+            ])
+          ) ||
+          (
+            isVerifiedUser() &&
+            existing().classTeacherEmail.size() > 0 &&
+            existing().classTeacherEmail == request.auth.token.email.lower() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'attendanceDate',
+              'attendanceToday',
+              'attendanceHistory',
+              'marks',
+              'teacherRemark',
+              'tahfizProgress',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isAdmin() && isValidId(studentId);
+    }
+
+    match /school_student_fees/{studentId} {
+      allow get: if isAdmin() && isValidId(studentId);
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isAdmin() &&
+        isValidId(studentId) &&
+        isValidStudentFeeRecord(incoming()) &&
+        incoming().studentId == studentId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidStudentFeeRecord(incoming()) &&
+        isAdmin() &&
+        isValidId(studentId) &&
+        incoming().studentId == existing().studentId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName',
+            'className',
+            'guardianName',
+            'guardianPhone',
+            'termFeeNgn',
+            'amountPaidNgn',
+            'payments',
+            'updatedAt'
+          ]))
+        );
+
+      allow delete: if isAdmin() && isValidId(studentId);
+    }
+  }
+}

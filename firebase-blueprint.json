@@ -1,0 +1,574 @@
+{
+  "entities": {
+    "DemoRequest": {
+      "title": "Demo Request",
+      "description": "A live demo booking submitted by a school or Madrasah leader.",
+      "type": "object",
+      "properties": {
+        "referenceId": {
+          "type": "string",
+          "description": "Unique booking reference ID matching the document ID.",
+          "minLength": 6,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "Name of the school or Madrasah.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Contact person's full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact person's email address.",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact person's phone or WhatsApp number.",
+          "minLength": 7,
+          "maxLength": 30
+        },
+        "schoolType": {
+          "type": "string",
+          "description": "Category of the educational institution.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "numberOfStudents": {
+          "type": "string",
+          "description": "Student population bracket.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "preferredDate": {
+          "type": "string",
+          "description": "Preferred ISO calendar date (YYYY-MM-DD) for the live demo.",
+          "minLength": 8,
+          "maxLength": 20,
+          "pattern": "^[0-9\\-]+$"
+        },
+        "selectedPlan": {
+          "type": "string",
+          "description": "Package or plan tier of interest.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "description": "Optional notes or curriculum requirements.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "description": "Lead workflow status managed by NUSMADE admin.",
+          "enum": ["new", "contacted", "scheduled", "archived"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the demo request was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the demo request was last updated."
+        }
+      },
+      "required": [
+        "referenceId",
+        "schoolName",
+        "fullName",
+        "email",
+        "phone",
+        "schoolType",
+        "numberOfStudents",
+        "preferredDate",
+        "selectedPlan",
+        "message",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContactInquiry": {
+      "title": "Contact Inquiry",
+      "description": "A general inquiry or consultation message submitted via the Contact Us page.",
+      "type": "object",
+      "properties": {
+        "referenceId": {
+          "type": "string",
+          "description": "Unique inquiry reference ID matching the document ID.",
+          "minLength": 6,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Sender's full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "Name of the sender's school or Madrasah.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Sender's email address.",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "description": "Sender's phone or WhatsApp number.",
+          "minLength": 7,
+          "maxLength": 30
+        },
+        "subject": {
+          "type": "string",
+          "description": "Selected inquiry topic.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "message": {
+          "type": "string",
+          "description": "Inquiry message details.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "description": "Lead workflow status managed by NUSMADE admin.",
+          "enum": ["new", "contacted", "scheduled", "archived"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the inquiry was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the inquiry was last updated."
+        }
+      },
+      "required": [
+        "referenceId",
+        "name",
+        "schoolName",
+        "email",
+        "phone",
+        "subject",
+        "message",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "Admin User",
+      "description": "Authorized NUSMADE administrator profile stored by UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email address.",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "description": "Administrator role designation.",
+          "enum": ["admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin record was created."
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "SchoolSettings": {
+      "title": "School Settings",
+      "description": "Core school configuration managed by the School Admin.",
+      "type": "object",
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "description": "Identifier matching the document ID.",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "Official school name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "schoolType": {
+          "type": "string",
+          "description": "Curriculum track of the school.",
+          "enum": ["conventional", "madrasah"]
+        },
+        "madrasahGradingMode": {
+          "type": "string",
+          "description": "Madrasah grading & numeral mode (Arabic only, English only, or Both).",
+          "enum": ["arabic", "english", "both"]
+        },
+        "termLabel": {
+          "type": "string",
+          "description": "Current academic term label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "classes": {
+          "type": "array",
+          "description": "Bounded list of active school classes."
+        },
+        "subjects": {
+          "type": "array",
+          "description": "Bounded list of active school subjects."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "schoolId",
+        "schoolName",
+        "schoolType",
+        "termLabel",
+        "classes",
+        "subjects",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SchoolTeacher": {
+      "title": "School Teacher",
+      "description": "Teacher assignment created by School Admin binding a Google email to one assigned class.",
+      "type": "object",
+      "properties": {
+        "teacherId": {
+          "type": "string",
+          "description": "Document ID matching teacherId.",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Teacher full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Lowercase Google account email authorized for this teacher.",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "assignedClass": {
+          "type": "string",
+          "description": "Exact class assigned to this teacher.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "assignedSubject": {
+          "type": "string",
+          "description": "Primary subject taught by this teacher.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "status": {
+          "type": "string",
+          "description": "Activation status controlled by School Admin.",
+          "enum": ["active", "inactive"]
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "Synced school name for teacher workspace display.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "schoolType": {
+          "type": "string",
+          "description": "Synced school curriculum type.",
+          "enum": ["conventional", "madrasah"]
+        },
+        "madrasahGradingMode": {
+          "type": "string",
+          "description": "Synced Madrasah grading & numeral mode (Arabic only, English only, or Both).",
+          "enum": ["arabic", "english", "both"]
+        },
+        "termLabel": {
+          "type": "string",
+          "description": "Synced academic term label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "subjects": {
+          "type": "array",
+          "description": "Synced bounded list of school subjects."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "teacherId",
+        "fullName",
+        "email",
+        "assignedClass",
+        "assignedSubject",
+        "status",
+        "schoolName",
+        "schoolType",
+        "termLabel",
+        "subjects",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SchoolStudent": {
+      "title": "School Student Academic Record",
+      "description": "Academic, attendance, and markbook record scoped to Admin and the assigned class teacher.",
+      "type": "object",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "Document ID matching studentId.",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "admissionNo": {
+          "type": "string",
+          "description": "Student admission number.",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Student full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "className": {
+          "type": "string",
+          "description": "Class placement.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "gender": {
+          "type": "string",
+          "description": "Student gender.",
+          "enum": ["Male", "Female"]
+        },
+        "classTeacherEmail": {
+          "type": "string",
+          "description": "Lowercase email of the assigned class teacher (or empty string if unassigned).",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "attendanceDate": {
+          "type": "string",
+          "description": "ISO date of recorded attendance.",
+          "minLength": 8,
+          "maxLength": 20,
+          "pattern": "^[0-9\\-]+$"
+        },
+        "attendanceToday": {
+          "type": "string",
+          "description": "Latest attendance status.",
+          "enum": ["present", "late", "absent"]
+        },
+        "attendanceHistory": {
+          "type": "object",
+          "description": "Map of ISO calendar dates (YYYY-MM-DD) to attendance statuses (present, late, absent), bounded to 120 days."
+        },
+        "marks": {
+          "type": "array",
+          "description": "Bounded array of subject mark objects (ca, exam)."
+        },
+        "teacherRemark": {
+          "type": "string",
+          "description": "Form teacher term remark.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "tahfizProgress": {
+          "type": "string",
+          "description": "Quranic memorization milestone (for Madrasah track).",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "studentId",
+        "admissionNo",
+        "fullName",
+        "className",
+        "gender",
+        "classTeacherEmail",
+        "attendanceDate",
+        "attendanceToday",
+        "marks",
+        "teacherRemark",
+        "tahfizProgress",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SchoolStudentFee": {
+      "title": "School Student Financial & Guardian PII Record",
+      "description": "Split collection storing guardian contact PII and tuition payments strictly accessible by School Admin.",
+      "type": "object",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "Document ID matching studentId.",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Student full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "className": {
+          "type": "string",
+          "description": "Student class.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "guardianName": {
+          "type": "string",
+          "description": "Guardian full name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "guardianPhone": {
+          "type": "string",
+          "description": "Guardian phone number.",
+          "minLength": 7,
+          "maxLength": 30
+        },
+        "termFeeNgn": {
+          "type": "number",
+          "description": "Expected termly tuition fee in Naira."
+        },
+        "amountPaidNgn": {
+          "type": "number",
+          "description": "Cumulative tuition paid in Naira."
+        },
+        "payments": {
+          "type": "array",
+          "description": "Bounded list of fee receipt transactions."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "studentId",
+        "fullName",
+        "className",
+        "guardianName",
+        "guardianPhone",
+        "termFeeNgn",
+        "amountPaidNgn",
+        "payments",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/demo_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/DemoRequest" },
+      "description": "Stores live demo booking leads submitted from the Book a Demo page."
+    },
+    "/contact_inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/ContactInquiry" },
+      "description": "Stores consultation messages submitted from the Contact Us page."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Stores authorized NUSMADE admin UIDs for private dashboard access."
+    },
+    "/school_settings/{schoolId}": {
+      "schema": { "$ref": "#/entities/SchoolSettings" },
+      "description": "Stores active school settings, classes, and subjects managed by School Admin."
+    },
+    "/school_teachers/{teacherId}": {
+      "schema": { "$ref": "#/entities/SchoolTeacher" },
+      "description": "Stores authorized class teachers and their assigned class/subject."
+    },
+    "/school_students/{studentId}": {
+      "schema": { "$ref": "#/entities/SchoolStudent" },
+      "description": "Stores student academic records, attendance, and subject scores scoped to Admin and assigned class teacher."
+    },
+    "/school_student_fees/{studentId}": {
+      "schema": { "$ref": "#/entities/SchoolStudentFee" },
+      "description": "Split collection storing guardian contact PII and tuition fee ledger strictly for School Admin."
+    }
+  }
+}
